@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Solicitar Vista - VistaNow</title>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --bg: #0f172a;
+            --text: #f8fafc;
+            --input-bg: #1e293b;
+        }
+
+        body {
+            margin: 0;
+            background-color: var(--bg);
+            color: var(--text);
+            font-family: 'Inter', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            padding: 20px;
+        }
+
+        form {
+            background: rgba(30, 41, 59, 0.5);
+            padding: 30px;
+            border-radius: 16px;
+            width: 100%;
+            max-width: 400px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        h2 {
+            margin: 0 0 10px 0;
+            text-align: center;
+        }
+
+        label {
+            font-size: 14px;
+            color: #94a3b8;
+        }
+
+        input {
+            background: var(--input-bg);
+            border: 1px solid #334155;
+            color: white;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 16px;
+            outline: none;
+        }
+
+        input:focus {
+            border-color: var(--primary);
+        }
+
+        button {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 15px;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 10px;
+            transition: opacity 0.2s;
+        }
+
+        button:hover {
+            opacity: 0.9;
+        }
+    </style>
+</head>
+
+<body>
+    <form id="demandForm">
+        <h2>Solicitar Vista en Vivo</h2>
+
+        <div>
+            <label for="location">¿Qué lugar quieres ver?</label>
+            <input type="text" id="location" name="location" required placeholder="Ej. Torre Eiffel, Parque Central...">
+        </div>
+
+        <div>
+            <label for="contact">Tu WhatsApp / Contacto</label>
+            <input type="text" id="contact" name="contact" required placeholder="+57 300...">
+        </div>
+
+        <button type="submit" id="submitBtn">Ir al Pago ($1.00)</button>
+    </form>
+
+    <script>
+        const form = document.getElementById('demandForm');
+        const submitBtn = document.getElementById('submitBtn');
+
+        // CONFIGURACIÓN
+        const STRIPE_LINK = "https://buy.stripe.com/tu-link-aqui"; // <--- PON TU LINK DE STRIPE AQUÍ
+        const ZAPIER_WEBHOOK = ""; // <--- OPCIONAL: URL de Webhook de Zapier para recibir los datos
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            submitBtn.disabled = true;
+            submitBtn.textContent = "Procesando...";
+
+            const formData = {
+                location: document.getElementById('location').value,
+                contact: document.getElementById('contact').value,
+                timestamp: new Date().toISOString()
+            };
+
+            // 1. Enviar datos a Zapier (si hay webhook configurado)
+            if (ZAPIER_WEBHOOK) {
+                try {
+                    await fetch(ZAPIER_WEBHOOK, {
+                        method: 'POST',
+                        body: JSON.stringify(formData)
+                    });
+                } catch (err) {
+                    console.error("Error enviando a Zapier", err);
+                }
+            } else {
+                console.log("Datos capturados:", formData);
+                // Aquí podrías guardar en LocalStorage o simplemente pasar.
+            }
+
+            // 2. Redirección automática a Stripe
+            window.location.href = STRIPE_LINK;
+        });
+    </script>
+</body>
+
+</html>
