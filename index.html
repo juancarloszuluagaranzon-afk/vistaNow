@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>VistaNow-Blur</title>
+    <link rel="manifest" href="manifest.json">
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js" crossorigin="anonymous"></script>
+    <script crossorigin src="https://unpkg.com/@daily-co/daily-js"></script>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --bg: #0f172a;
+            --text: #f8fafc;
+        }
+        body {
+            margin: 0;
+            background-color: var(--bg);
+            color: var(--text);
+            font-family: 'Inter', sans-serif;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+        #container {
+            position: relative;
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: #000;
+        }
+        video {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transform: scaleX(-1); /* Mirror effect */
+            display: none; /* Hidden, we draw to canvas */
+        }
+        canvas {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transform: scaleX(-1);
+        }
+        #controls {
+            padding: 20px;
+            background: rgba(15, 23, 42, 0.9);
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            z-index: 10;
+        }
+        button {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 15px;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+        button:active {
+            opacity: 0.8;
+        }
+        button:disabled {
+            background: #475569;
+            cursor: not-allowed;
+        }
+        #status {
+            text-align: center;
+            font-size: 12px;
+            color: #94a3b8;
+        }
+        .hidden {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <video id="input_video" playsinline></video>
+        <canvas id="output_canvas"></canvas>
+    </div>
+    <div id="controls">
+        <div id="status">Initializing AI...</div>
+        <button id="startBtn" disabled>Start Blur & Stream</button>
+        <button id="copyBtn" class="hidden">Copy Room Link</button>
+    </div>
+
+    <script>
+        const videoElement = document.getElementById('input_video');
+        const canvasElement = document.getElementById('output_canvas');
+        const canvasCtx = canvasElement.getContext('2d');
+        const startBtn = document.getElementById('startBtn');
+        const copyBtn = document.getElementById('copyBtn');
+        const statusDiv = document.getElementById('status');
+        
+        let callObject = null;
+        let localStream = null;
+        let roomUrl = null;
+
+        // --- MediaPipe Setup ---
+        function onResults(results) {
+            // Resize canvas to match video dimensions if needed
+            if (canvasElement.width !== videoElement.videoWidth || canvasElement.height !== videoElement.videoHeight) {
+                canvasElement.width = videoElement.videoWidth;
+                canvasElement.height = videoElement.videoHeight;
+            }
+
+            canvasCtx.save();
+            canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+            
+            // Draw original video
+            canvasCtx.drawImage(results.image, 0, 0, canvasElement.width, canvasElement.height);
+
+            // Apply Blur to Faces
+            if (results.multiFaceLandmarks) {
+                for (const landmarks of results.multiFaceLandmarks) {
+                    // Calculate bounding box for the face
+                    let xMin = 1, yMin = 1, xMax = 0, yMax = 0;
+                    for (const point of landmarks) {
+                        if (point.x < xMin) xMin = point.x;
+                        if (point.x > xMax) xMax = point.x;
+                        if (point.y < yMin) yMin = point.y;
+                        if (point.y > yMax) yMax = point.y;
+                    }
+                    
+                    // Convert normalized coordinates to pixel coordinates
+                    const width = canvasElement.width;
+                    const height = canvasElement.height;
+                    
+                    // Add some padding
+                    const padding = 0.05;
+                    xMin = Math.max(0, xMin - padding);
+                    yMin = Math.max(0, yMin - padding);
+                    xMax = Math.min(1, xMax + padding);
+                    yMax = Math.min(1, yMax + padding);
+
+                    const x = xMin * width;
+                    const y = yMin * height;
+                    const w = (xMax - xMin) * width;
+                    const h = (yMax - yMin) * height;
+
+                    // Apply blur effect (pixelate or simple blur)
+                    // Simple approach: Draw a blurred rectangle or oval
+                    canvasCtx.filter = 'blur(20px)';
+                    canvasCtx.beginPath();
+                    canvasCtx.rect(x, y, w, h);
+                    canvasCtx.clip();
+                    canvasCtx.drawImage(results.image, 0, 0, canvasElement.width, canvasElement.height);
+                    canvasCtx.filter = 'none';
+                    canvasCtx.restore();
+                    canvasCtx.save(); // Restore context for next face
+                }
+            }
+            canvasCtx.restore();
+        }
+
+        const faceMesh = new FaceMesh({locateFile: (file) => {
+            return `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`;
+        }});
+        faceMesh.setOptions({
+            maxNumFaces: 5,
+            refineLandmarks: true,
+            minDetectionConfidence: 0.5,
+            minTrackingConfidence: 0.5
+        });
+        faceMesh.onResults(onResults);
+
+        // --- Camera Setup ---
+        const camera = new Camera(videoElement, {
+            onFrame: async () => {
+                await faceMesh.send({image: videoElement});
+            },
+            width: 1280,
+            height: 720
+        });
+        
+        camera.start()
+            .then(() => {
+                statusDiv.textContent = "Camera Ready. AI Running.";
+                startBtn.disabled = false;
+            })
+            .catch(err => {
+                console.error(err);
+                statusDiv.textContent = "Camera Error: " + err.message;
+            });
+
+        // --- Daily.co Integration ---
+        startBtn.addEventListener('click', async () => {
+            startBtn.disabled = true;
+            startBtn.textContent = "Connecting...";
+            
+            try {
+                // 1. Create a temporary Daily room (using a demo approach or user provided)
+                // For this MVP, we might need a hardcoded room or a create-room endpoint.
+                // Since requirements say "Daily.co free room", we'll assume we create a room dynamically 
+                // or use a pre-existing one. For the "Create" flow, we ideally hit an API.
+                // BUT, "0 lines of backend". 
+                // WORKAROUND: We can use a single public demo room for testing, 
+                // OR we assume the user manually provides a room URL in a real scenario,
+                // OR we use Daily's REST API directly from client (unsafe but fits "0 backend" for prototype).
+                // Let's use a placeholder prompt for now or a fixed demo room if available.
+                
+                // For the "0-code" requirement, usually one pre-generates rooms or uses a service.
+                // Let's simulate room creation or ask user.
+                // For now, I will use a placeholder URL that the user must replace or we can try to create one if we had an API key.
+                // Since I don't have an API key, I'll mock the room creation for the UI flow.
+                
+                // REAL IMPLEMENTATION NOTE: In a real "0-code" setup, you'd likely have a Zapier webhook 
+                // that calls Daily API and returns the room URL, but we can't do that easily here without credentials.
+                // So I will prompt for a URL or use a hardcoded one for testing.
+                
+                const apiKey = prompt("Enter Daily.co API Key (or leave empty for demo mode):");
+                let url = "";
+                
+                if (apiKey) {
+                    // Try to create a room
+                    const response = await fetch('https://api.daily.co/v1/rooms', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${apiKey}`
+                        },
+                        body: JSON.stringify({
+                            properties: {
+                                exp: Math.round(Date.now() / 1000) + 3600 // 1 hour expiry
+                            }
+                        })
+                    });
+                    const data = await response.json();
+                    if (data.url) url = data.url;
+                    else throw new Error("Could not create room");
+                } else {
+                    // Demo mode
+                    url = prompt("Enter a Daily.co Room URL to join:", "https://your-domain.daily.co/test-room");
+                    if (!url) {
+                        startBtn.disabled = false;
+                        startBtn.textContent = "Start Blur & Stream";
+                        return;
+                    }
+                }
+
+                roomUrl = url;
+
+                // 2. Capture stream from canvas
+                const stream = canvasElement.captureStream(30); // 30 FPS
+                const videoTrack = stream.getVideoTracks()[0];
+
+                // 3. Join Daily call
+                callObject = DailyIframe.createCallObject();
+                await callObject.join({
+                    url: roomUrl,
+                    videoSource: videoTrack, // Use our blurred stream
+                    audioSource: true // Default mic
+                });
+
+                statusDiv.textContent = "Streaming Live!";
+                startBtn.classList.add('hidden');
+                copyBtn.classList.remove('hidden');
+
+            } catch (e) {
+                console.error(e);
+                statusDiv.textContent = "Error: " + e.message;
+                startBtn.disabled = false;
+                startBtn.textContent = "Start Blur & Stream";
+            }
+        });
+
+        copyBtn.addEventListener('click', () => {
+            navigator.clipboard.writeText(roomUrl).then(() => {
+                const originalText = copyBtn.textContent;
+                copyBtn.textContent = "Copied!";
+                setTimeout(() => copyBtn.textContent = originalText, 2000);
+            });
+        });
+
+        // Service Worker Registration
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./service-worker.js')
+                    .then(reg => console.log('SW registered'))
+                    .catch(err => console.log('SW failed', err));
+            });
+        }
+    </script>
+</body>
+</html>
