@@ -5,110 +5,121 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Solicitar Vista - VistaNow</title>
+    <link rel="stylesheet" href="index.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
     <style>
-        :root {
-            --primary: #6366f1;
-            --bg: #0f172a;
-            --text: #f8fafc;
-            --input-bg: #1e293b;
-        }
-
         body {
-            margin: 0;
-            background-color: var(--bg);
-            color: var(--text);
-            font-family: 'Inter', sans-serif;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            padding: 20px;
+            background-color: var(--bg-dark);
+            background-image: radial-gradient(circle at 50% 0%, #1e1b4b 0%, var(--bg-dark) 70%);
         }
 
         form {
-            background: rgba(30, 41, 59, 0.5);
-            padding: 30px;
-            border-radius: 16px;
+            background: var(--surface-glass);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            padding: 40px;
+            border-radius: 24px;
             width: 100%;
-            max-width: 400px;
+            max-width: 420px;
             display: flex;
             flex-direction: column;
-            gap: 20px;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            gap: 24px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
         }
 
         h2 {
-            margin: 0 0 10px 0;
+            margin: 0;
             text-align: center;
+            font-weight: 600;
+            font-size: 24px;
+            background: linear-gradient(to right, #fff, #94a3b8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
         }
 
         label {
             font-size: 14px;
-            color: #94a3b8;
+            color: var(--text-secondary);
+            font-weight: 500;
         }
 
         input {
-            background: var(--input-bg);
-            border: 1px solid #334155;
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.1);
             color: white;
-            padding: 12px;
-            border-radius: 8px;
+            padding: 16px;
+            border-radius: 12px;
             font-size: 16px;
             outline: none;
+            transition: all 0.2s;
+            font-family: inherit;
         }
 
         input:focus {
             border-color: var(--primary);
+            box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.2);
+            background: rgba(15, 23, 42, 0.8);
         }
 
-        button {
-            background: var(--primary);
-            color: white;
-            border: none;
-            padding: 15px;
-            border-radius: 12px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            margin-top: 10px;
-            transition: opacity 0.2s;
+        input::placeholder {
+            color: #64748b;
         }
 
-        button:hover {
-            opacity: 0.9;
+        .price-tag {
+            text-align: center;
+            font-size: 32px;
+            font-weight: 700;
+            color: var(--success);
+            margin: 10px 0;
+            text-shadow: 0 0 20px rgba(34, 197, 94, 0.3);
         }
     </style>
 </head>
 
 <body>
     <form id="demandForm">
-        <h2>Solicitar Vista en Vivo</h2>
+        <h2>Solicitar Show Privado</h2>
 
-        <div>
-            <label for="location">¿Qué lugar quieres ver?</label>
-            <input type="text" id="location" name="location" required placeholder="Ej. Torre Eiffel, Parque Central...">
+        <div class="price-tag">$1.00 <span style="font-size: 14px; opacity: 0.7; font-weight: 400;">/ minuto</span>
         </div>
 
-        <div>
-            <label for="contact">Tu WhatsApp / Contacto</label>
+        <div class="input-group">
+            <label for="location">¿Qué experiencia buscas?</label>
+            <input type="text" id="location" name="location" required placeholder="Ej. Baile, charla, paseo...">
+        </div>
+
+        <div class="input-group">
+            <label for="contact">Tu WhatsApp / Telegram</label>
             <input type="text" id="contact" name="contact" required placeholder="+57 300...">
         </div>
 
-        <button type="submit" id="submitBtn">Ir al Pago ($1.00)</button>
+        <button type="submit" id="submitBtn">
+            <span>💳 Ir al Pago Seguro</span>
+        </button>
+
+        <div style="text-align: center; font-size: 12px; color: #64748b; margin-top: -10px;">
+            <span id="secureIcon">🔒</span> Transacción Anónima y Encriptada
+        </div>
     </form>
 
     <script>
         const form = document.getElementById('demandForm');
         const submitBtn = document.getElementById('submitBtn');
 
-        // CONFIGURACIÓN
-        const STRIPE_LINK = "https://buy.stripe.com/tu-link-aqui"; // <--- PON TU LINK DE STRIPE AQUÍ
-        const ZAPIER_WEBHOOK = ""; // <--- OPCIONAL: URL de Webhook de Zapier para recibir los datos
+        // CONFIGURACIÓN MOCK
+        const STRIPE_LINK = "#";
 
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
             submitBtn.disabled = true;
-            submitBtn.textContent = "Procesando...";
+            submitBtn.innerHTML = "<span>🔄 Procesando...</span>";
 
             const formData = {
                 location: document.getElementById('location').value,
@@ -116,23 +127,17 @@
                 timestamp: new Date().toISOString()
             };
 
-            // 1. Enviar datos a Zapier (si hay webhook configurado)
-            if (ZAPIER_WEBHOOK) {
-                try {
-                    await fetch(ZAPIER_WEBHOOK, {
-                        method: 'POST',
-                        body: JSON.stringify(formData)
-                    });
-                } catch (err) {
-                    console.error("Error enviando a Zapier", err);
-                }
-            } else {
-                console.log("Datos capturados:", formData);
-                // Aquí podrías guardar en LocalStorage o simplemente pasar.
-            }
+            console.log("Datos capturados (Mock):", formData);
 
-            // 2. Redirección automática a Stripe
-            window.location.href = STRIPE_LINK;
+            // Simular delay de red
+            await new Promise(r => setTimeout(r, 1500));
+
+            submitBtn.innerHTML = "<span>✅ Redirigiendo...</span>";
+            setTimeout(() => {
+                alert("En una implementación real, aquí irías a Stripe: " + STRIPE_LINK);
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = "<span>💳 Ir al Pago Seguro</span>";
+            }, 500);
         });
     </script>
 </body>
