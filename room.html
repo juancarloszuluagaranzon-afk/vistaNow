@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Watching Stream - VistaNow</title>
+    <link rel="stylesheet" href="index.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* Mobile specific adjustments */
+        @media (max-width: 768px) {
+            .room-layout {
+                grid-template-columns: 1fr;
+                grid-template-rows: 50vh 1fr;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="room-layout">
+        <!-- VIDEO STAGE -->
+        <div class="video-stage">
+            <div style="text-align: center; color: #94a3b8;">
+                <div style="font-size: 64px; margin-bottom: 20px;">📡</div>
+                <h2>Waiting for stream signal...</h2>
+                <p>Connecting to secure feed.</p>
+                <!-- In real implementation, Daily.co Iframe goes here -->
+            </div>
+
+            <div style="position: absolute; top: 20px; left: 20px;">
+                <a href="index.html" class="badge hd" style="text-decoration: none; padding: 10px;">← Back to Lobby</a>
+            </div>
+        </div>
+
+        <!-- CHAT -->
+        <div class="chat-panel">
+            <div
+                style="padding: 15px; border-bottom: 1px solid rgba(255,255,255,0.1); display: flex; justify-content: space-between; align-items: center;">
+                <h3 style="margin: 0;">Room Chat</h3>
+                <span class="badge live">👥 1,240</span>
+            </div>
+
+            <div class="chat-messages" id="chatArea">
+                <div class="chat-msg"><span class="chat-user" style="color: #ef4444;">System:</span> Welcome to the
+                    room! Follow the rules.</div>
+            </div>
+
+            <div class="chat-input">
+                <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+                    <button class="small" style="background: #f472b6; padding: 8px 12px; font-size: 12px;">TOKEN
+                        25</button>
+                    <button class="small" style="background: #a855f7; padding: 8px 12px; font-size: 12px;">TOKEN
+                        100</button>
+                    <button class="small" style="background: #eab308; padding: 8px 12px; font-size: 12px;">TIP
+                        CUSTOM</button>
+                </div>
+                <input type="text" placeholder="Say something nice..." id="msgInput"
+                    style="width: 100%; box-sizing: border-box; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1);">
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // MOCK CHAT
+        const chatArea = document.getElementById('chatArea');
+        const names = ['User123', 'CoolGuy', 'Anon_X', 'Watcher007', 'FanNum1'];
+        const messages = ['Hello!', 'Great show!', 'Love the mask', 'How are you?', 'Tip 50 tokens!'];
+
+        setInterval(() => {
+            const name = names[Math.floor(Math.random() * names.length)];
+            const msg = messages[Math.floor(Math.random() * messages.length)];
+            const color = '#' + Math.floor(Math.random() * 16777215).toString(16);
+
+            const el = document.createElement('div');
+            el.className = 'chat-msg';
+            el.innerHTML = `<span class="chat-user" style="color: ${color}">${name}:</span> ${msg}`;
+
+            chatArea.appendChild(el);
+            chatArea.scrollTop = chatArea.scrollHeight;
+        }, 2000);
+
+        // Handle Input
+        document.getElementById('msgInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                const val = e.target.value;
+                if (!val) return;
+
+                const el = document.createElement('div');
+                el.className = 'chat-msg';
+                el.innerHTML = `<span class="chat-user" style="color: white; font-weight: bold;">YOU:</span> ${val}`;
+                chatArea.appendChild(el);
+                chatArea.scrollTop = chatArea.scrollHeight;
+                e.target.value = '';
+            }
+        });
+    </script>
+</body>
+
+</html>
